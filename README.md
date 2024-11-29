@@ -2,14 +2,15 @@
 
 ## TECH STACK
 ### -> Xampp 
-XAMPP is widely used for MySQL because it provides a comprehensive and user-friendly solution to set up a local web server environment.
+### -> MYSQL
 ### -> Python Flask
-Python Flask is a lightweight web framework that is used for building web applications
+
 ### -> HTML
 ### -> CSS
 
 
 ## IMPLEMENTATION
+  ![Screenshot 2024-11-19 145318](https://github.com/user-attachments/assets/f2ca9a5c-e9fc-4abf-bb37-c9e6ae0dc9c7)
 
 
 
