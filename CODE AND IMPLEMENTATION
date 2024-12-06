@@ -137,3 +137,1199 @@ MODIFY `tid` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20; --
 ALTER TABLE `user`
 MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16; COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */; /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */; /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+
+=================================================================================================================================================================== 
+                                             *********************PYHTON CODE****************************
+from flask import Flask,render_template,request,session,redirect,url_for,flash
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash,check_password_hash
+from flask_login import login_user,logout_user,login_manager,LoginManager
+from flask_login import login_required,current_user
+# from flask_mail import Mail
+import json
+
+
+
+# MY db connection
+local_server= True
+app = Flask(__name__)
+app.secret_key='hmsprojects'
+
+
+# this is for getting unique user access
+login_manager=LoginManager(app)
+login_manager.login_view='login'
+
+# SMTP MAIL SERVER SETTINGS
+
+# app.config.update(
+#     MAIL_SERVER='smtp.gmail.com',
+#     MAIL_PORT='465',
+#     MAIL_USE_SSL=True,
+#     MAIL_USERNAME="add your gmail-id",
+#     MAIL_PASSWORD="add your gmail-password"
+# )
+# mail = Mail(app)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
+
+
+# app.config['SQLALCHEMY_DATABASE_URL']='mysql://username:password@localhost/databas_table_name'
+app.config['SQLALCHEMY_DATABASE_URI']='mysql://root:@localhost/hdmsdbms'
+db=SQLAlchemy(app)
+
+
+
+# here we will create db models that is tables
+class Test(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    name=db.Column(db.String(100))
+    email=db.Column(db.String(100))
+
+class User(UserMixin,db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    username=db.Column(db.String(50))
+    usertype=db.Column(db.String(50))
+    email=db.Column(db.String(50),unique=True)
+    password=db.Column(db.String(1000))
+
+class Patients(db.Model):
+    pid=db.Column(db.Integer,primary_key=True)
+    email=db.Column(db.String(50))
+    name=db.Column(db.String(50))
+    gender=db.Column(db.String(50))
+    slot=db.Column(db.String(50))
+    disease=db.Column(db.String(50))
+    time=db.Column(db.String(50),nullable=False)
+    date=db.Column(db.String(50),nullable=False)
+    dept=db.Column(db.String(50))
+    number=db.Column(db.String(50))
+
+class Doctors(db.Model):
+    did=db.Column(db.Integer,primary_key=True)
+    email=db.Column(db.String(50))
+    doctorname=db.Column(db.String(50))
+    dept=db.Column(db.String(50))
+
+class Trigr(db.Model):
+    tid=db.Column(db.Integer,primary_key=True)
+    pid=db.Column(db.Integer)
+    email=db.Column(db.String(50))
+    name=db.Column(db.String(50))
+    action=db.Column(db.String(50))
+    timestamp=db.Column(db.String(50))
+
+
+
+
+
+# here we will pass endpoints and run the fuction
+@app.route('/')
+def index():
+    return render_template('index.html')
+    
+
+
+@app.route('/doctors',methods=['POST','GET'])
+def doctors():
+
+    if request.method=="POST":
+
+        email=request.form.get('email')
+        doctorname=request.form.get('doctorname')
+        dept=request.form.get('dept')
+
+        # query=db.engine.execute(f"INSERT INTO `doctors` (`email`,`doctorname`,`dept`) VALUES ('{email}','{doctorname}','{dept}')")
+        query=Doctors(email=email,doctorname=doctorname,dept=dept)
+        db.session.add(query)
+        db.session.commit()
+        flash("Information is Stored","primary")
+
+    return render_template('doctor.html')
+
+
+
+@app.route('/patients',methods=['POST','GET'])
+@login_required
+def patient():
+    # doct=db.engine.execute("SELECT * FROM `doctors`")
+    doct=Doctors.query.all()
+
+    if request.method=="POST":
+        email=request.form.get('email')
+        name=request.form.get('name')
+        gender=request.form.get('gender')
+        slot=request.form.get('slot')
+        disease=request.form.get('disease')
+        time=request.form.get('time')
+        date=request.form.get('date')
+        dept=request.form.get('dept')
+        number=request.form.get('number')
+        # subject="HOSPITAL MANAGEMENT SYSTEM"
+        if len(number)<10 or len(number)>10:
+            flash("Please give 10 digit number")
+            return render_template('patient.html',doct=doct)
+  
+
+        # query=db.engine.execute(f"INSERT INTO `patients` (`email`,`name`,	`gender`,`slot`,`disease`,`time`,`date`,`dept`,`number`) VALUES ('{email}','{name}','{gender}','{slot}','{disease}','{time}','{date}','{dept}','{number}')")
+        query=Patients(email=email,name=name,gender=gender,slot=slot,disease=disease,time=time,date=date,dept=dept,number=number)
+        db.session.add(query)
+        db.session.commit()
+        
+        # mail starts from here
+
+        # mail.send_message(subject, sender=params['gmail-user'], recipients=[email],body=f"YOUR bOOKING IS CONFIRMED THANKS FOR CHOOSING US \nYour Entered Details are :\nName: {name}\nSlot: {slot}")
+
+
+
+        flash("Booking Confirmed","info")
+
+
+    return render_template('patient.html',doct=doct)
+
+
+@app.route('/bookings')
+@login_required
+def bookings(): 
+    em=current_user.email
+    if current_user.usertype=="Doctor":
+        # query=db.engine.execute(f"SELECT * FROM `patients`")
+        query=Patients.query.all()
+        return render_template('booking.html',query=query)
+    else:
+        # query=db.engine.execute(f"SELECT * FROM `patients` WHERE email='{em}'")
+        query=Patients.query.filter_by(email=em)
+        print(query)
+        return render_template('booking.html',query=query)
+    
+
+
+@app.route("/edit/<string:pid>",methods=['POST','GET'])
+@login_required
+def edit(pid):    
+    if request.method=="POST":
+        email=request.form.get('email')
+        name=request.form.get('name')
+        gender=request.form.get('gender')
+        slot=request.form.get('slot')
+        disease=request.form.get('disease')
+        time=request.form.get('time')
+        date=request.form.get('date')
+        dept=request.form.get('dept')
+        number=request.form.get('number')
+        # db.engine.execute(f"UPDATE `patients` SET `email` = '{email}', `name` = '{name}', `gender` = '{gender}', `slot` = '{slot}', `disease` = '{disease}', `time` = '{time}', `date` = '{date}', `dept` = '{dept}', `number` = '{number}' WHERE `patients`.`pid` = {pid}")
+        post=Patients.query.filter_by(pid=pid).first()
+        post.email=email
+        post.name=name
+        post.gender=gender
+        post.slot=slot
+        post.disease=disease
+        post.time=time
+        post.date=date
+        post.dept=dept
+        post.number=number
+        db.session.commit()
+
+        flash("Slot is Updates","success")
+        return redirect('/bookings')
+        
+    posts=Patients.query.filter_by(pid=pid).first()
+    return render_template('edit.html',posts=posts)
+
+
+@app.route("/delete/<string:pid>",methods=['POST','GET'])
+@login_required
+def delete(pid):
+    # db.engine.execute(f"DELETE FROM `patients` WHERE `patients`.`pid`={pid}")
+    query=Patients.query.filter_by(pid=pid).first()
+    db.session.delete(query)
+    db.session.commit()
+    flash("Slot Deleted Successful","danger")
+    return redirect('/bookings')
+
+
+
+
+
+
+@app.route('/signup',methods=['POST','GET'])
+def signup():
+    if request.method == "POST":
+        username=request.form.get('username')
+        usertype=request.form.get('usertype')
+        email=request.form.get('email')
+        password=request.form.get('password')
+        user=User.query.filter_by(email=email).first()
+        # encpassword=generate_password_hash(password)
+        if user:
+            flash("Email Already Exist","warning")
+            return render_template('/signup.html')
+
+        # new_user=db.engine.execute(f"INSERT INTO `user` (`username`,`usertype`,`email`,`password`) VALUES ('{username}','{usertype}','{email}','{encpassword}')")
+        myquery=User(username=username,usertype=usertype,email=email,password=password)
+        db.session.add(myquery)
+        db.session.commit()
+        flash("Signup Succes Please Login","success")
+        return render_template('login.html')
+
+          
+
+    return render_template('signup.html')
+
+@app.route('/login',methods=['POST','GET'])
+def login():
+    if request.method == "POST":
+        email=request.form.get('email')
+        password=request.form.get('password')
+        user=User.query.filter_by(email=email).first()
+
+        if user and user.password == password:
+            login_user(user)
+            flash("Login Success","primary")
+            return redirect(url_for('index'))
+        else:
+            flash("invalid credentials","danger")
+            return render_template('login.html')    
+
+
+
+
+
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    flash("Logout SuccessFul","warning")
+    return redirect(url_for('login'))
+
+
+
+@app.route('/test')
+def test():
+    try:
+        Test.query.all()
+        return 'My database is Connected'
+    except:
+        return 'My db is not Connected'
+    
+
+@app.route('/details')
+@login_required
+def details():
+    posts=Trigr.query.all()
+    # posts=db.engine.execute("SELECT * FROM `trigr`")
+    return render_template('trigers.html',posts=posts)
+
+
+@app.route('/search',methods=['POST','GET'])
+@login_required
+def search():
+    if request.method=="POST":
+        query=request.form.get('search')
+        dept=Doctors.query.filter_by(dept=query).first()
+        name=Doctors.query.filter_by(doctorname=query).first()
+        if name:
+
+            flash("Doctor is Available","info")
+        else:
+
+            flash("Doctor is Not Available","danger")
+    return render_template('index.html')
+
+
+
+
+
+
+app.run(debug=True)    
+==================================================================================================================================================================
+                             ******************************** HTML CODE ******************************************
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="static/css/virtualregister.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
+    {% block css %}
+    {% endblock css %}
+
+    <title>
+
+    {% block title %}
+
+    {% endblock title %}
+    
+    </title>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="/">H.M.S</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item active">
+                    <a class="nav-link" href="/">Home <span class="sr-only">(current)</span></a>
+                </li>
+
+{% if current_user.usertype=="Doctor" %}
+  <li class="nav-item">
+                    <a class="nav-link" href="/doctors">Doctors</a>
+                </li>
+                
+
+
+                <li class="nav-item">
+                    <a class="nav-link" href="/bookings">Booking Details</a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="/details">Patients Details</a>
+                </li>
+{% else %}
+             
+                <li class="nav-item">
+                    <a class="nav-link" href="/patients">Patients Booking</a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="/bookings">Booking Details</a>
+                </li>
+                
+{% endif %}
+    {% if current_user.is_authenticated  %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                Welcome {{current_user.username}}
+              </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                    
+                        <a class="dropdown-item" href="/logout">Logout</a>
+                    </div>
+                </li>
+{% else %}
+
+<li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                Authentication
+              </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="/signup">Signup</a>
+                        <a class="dropdown-item" href="/login">Login </a>
+                   
+                    </div>
+                </li>
+
+
+
+{% endif %}
+
+
+            </ul>
+            <form class="form-inline my-2 my-lg-0" action="/search" method="post">
+                <input class="form-control mr-sm-2" type="search" placeholder="Department" name="search" aria-label="Search">
+                <button class="btn btn-outline-light my-2 my-sm-0" type="submit">Search</button>
+            </form>
+        </div>
+    </nav>
+
+    {% block body %}
+
+    {% endblock body %}
+
+<div class="card text-white bg-dark">
+  <div class="card-header">Done By:</div>
+  <div class="card-body">
+    <h5 class="card-title">Aneeqah</h5>
+    <h5 class="card-title">Astha</h5>
+    <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+  </div>
+</div>
+
+
+
+
+    <!-- Optional JavaScript; choose one of the two! -->
+
+    <!-- Option 1: jQuery and Bootstrap Bundle (includes Popper) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"></script>
+
+
+
+</body>
+
+</html>
+{% extends 'base.html' %}
+
+{% block title %}
+Booking
+{% endblock title %}
+
+{% block body %}
+{% with messages=get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+
+<div class="alert alert-{{category}} alert-dismissible fade show" role="alert">
+    {{message}}
+
+  <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+
+
+  {% endfor %}
+  {% endif %}
+  {% endwith %}
+<table class="table">
+  <thead class="thead-light">
+    <tr>
+      <th scope="col">PID</th>
+      <th scope="col">EMAIL</th>
+      <th scope="col">NAME</th>
+      <th scope="col">GENDER</th>
+      <th scope="col">SLOT</th>
+      <th scope="col">DISEASE</th>
+      <th scope="col">DATE</th>
+      <th scope="col">TIME</th>
+      <th scope="col">D.DEPARTMENT</th>
+      <th scope="col">PHONE NUMBER</th>
+      <th scope="col">EDIT</th>
+      <th scope="col">DELETE</th>
+
+    </tr>
+  </thead>
+  <tbody>
+  {% for post in query %}
+    <tr>
+      <th scope="row">{{post.pid}}</th>
+      <td>{{post.email}}</td>
+      <td>{{post.name}}</td>
+      <td>{{post.gender}}</td>
+      <td>{{post.slot}}</td>
+      <td>{{post.disease}}</td>
+      <td>{{post.date}}</td>
+      <td>{{post.time}}</td>
+      <td>{{post.dept}}</td>
+      <td>{{post.number}}</td>
+    <td><a href="/edit/{{post.pid}}"><button class="btn btn-success">Edit </button> </a> </td>
+    <td><a href="/delete/{{post.pid}}"><button onclick="return confirm('Are you sure to Delete data');" class="btn btn-success">Delete </button> </a> </td>
+    </tr>
+{% endfor %}
+  
+  </tbody>
+</table>
+
+
+{% endblock body %}
+{% extends 'base.html' %}
+
+{% block title %}
+Doctors
+{% endblock title %}
+
+{% block body %}
+
+<div class="container">
+
+<div class="row">
+
+<div class="col-md-4"></div>
+<div class="col-md-4">
+{% with messages=get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+
+<div class="alert alert-{{category}} alert-dismissible fade show" role="alert">
+    {{message}}
+
+  <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+
+
+  {% endfor %}
+  {% endif %}
+  {% endwith %}
+<br>
+<h2 class="text-center text-white bg-dark">Doctors Booking</h2>
+
+<br>
+<form action="/doctors" method="post" class="jumbotron">
+
+<div class="form-group">
+
+<input type="email" class="form-control" name="email" value={{current_user.email}}  required>
+
+</div>
+
+<div class="form-group">
+
+<input type="text" class="form-control" name="doctorname" placeholder="Doctor Name" required>
+
+</div>
+
+
+<div class="form-group">
+
+<input type="text" class="form-control" name="dept" placeholder="Doctor Department" required>
+
+</div>
+
+
+  <button type="submit" class="btn btn-dark btn-sm btn-block">Book</button>
+
+</form>
+
+</div>
+<div class="col-md-4"></div>
+
+</div>
+
+</div>
+
+{% endblock body %}
+{% extends 'base.html' %}
+
+{% block title %}
+Edit Patient BOOKING
+{% endblock title %}
+
+{% block body %}
+
+<div class="row">
+
+<div class="col-md-4">
+</div>
+
+<div class="col-md-4">
+<br>
+
+<h4 class="text-center bg-success text-white">Update Your Slot</h4>
+<br>
+
+
+<form action="/edit/{{posts.pid}}" method="post" class="jumbotron">
+
+ 
+
+  <div class="form-group">
+
+    <input type="email" class="form-control" id="email" value={{current_user.email}} name="email" required>
+  
+  </div>
+
+  <div class="form-group">
+  
+    <input type="text" class="form-control" id="name" name="name" value={{posts.name}} placeholder="Full Name" required>
+  
+  </div>
+
+ <div class="form-group">
+
+            
+                                      
+<select class="form-control" id="gender" name="gender"  required>
+        <option selected>{{posts.gender}} </option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+        <option value="Others">Others</option>
+ 
+      </select>
+ </div>
+
+ <div class="form-group">
+
+            
+                                      
+<select class="form-control" id="slot" name="slot"  required>
+        <option selected>{{posts.slot}} </option>
+        <option value="morning">Morning</option>
+        <option value="evening">Evening</option>
+        <option value="night">Night</option>
+ 
+      </select>
+ </div>
+
+  <div class="form-group">
+    
+    <input type="time" class="form-control" value={{posts.time}}  name="time" placeholder="Time" required>
+  
+  </div>
+  <div class="form-group">
+    
+    <input type="date" class="form-control" value={{posts.date}}  name="date" placeholder="date" required>
+  
+  </div>
+  <div class="form-group">
+    
+    <input type="text" class="form-control" value={{posts.disease}}  id="disease" name="disease" placeholder="Disease" required>
+  
+  </div>
+
+  <div class="form-group">
+
+    <input type="text" class="form-control" value={{posts.dept}}  id="dept" name="dept" placeholder="Doctor Dept" required>
+  
+  </div>
+
+  <div class="form-group">
+
+    <input type="number" class="form-control" value={{posts.number}}  id="number" name="number" placeholder="Phone Number" required>
+  
+  </div>
+
+  
+  <button type="submit" class="btn btn-warning btn-sm btn-block">Update</button>
+</form>
+
+
+
+
+</div>
+<div class="col-md-4"></div>
+</div>
+
+
+{% endblock body %}
+{% extends 'base.html' %}
+
+{% block title %}
+HOME
+{% endblock title %}
+
+{% block body %}
+
+{% with messages=get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+
+<div class="alert alert-{{category}} alert-dismissible fade show" role="alert">
+    {{message}}
+
+  <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+
+
+  {% endfor %}
+  {% endif %}
+  {% endwith %}
+
+
+
+  <div id="carouselExampleCaptions" class="carousel slide" data-ride="carousel">
+  <ol class="carousel-indicators">
+    <li data-target="#carouselExampleCaptions" data-slide-to="0" class="active"></li>
+    <li data-target="#carouselExampleCaptions" data-slide-to="1"></li>
+    <li data-target="#carouselExampleCaptions" data-slide-to="2"></li>
+  </ol>
+  <div class="carousel-inner">
+    <div class="carousel-item active">
+      <img src="static/bg1.jpg" class="d-block w-100" alt="...">
+      <div class="carousel-caption d-none d-md-block">
+        <h5>WELCOME TO H M S</h5>
+        <p>Nulla vitae elit libero, a pharetra augue mollis interdum.</p>
+      </div>
+    </div>
+    <div class="carousel-item">
+      <img src="static/d2.jpg" class="d-block w-100" alt="...">
+      <div class="carousel-caption d-none d-md-block">
+        <h5>WELCOME TO H M S</h5>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+      </div>
+    </div>
+    <div class="carousel-item">
+      <img src="static/d3.jpg" class="d-block w-100" alt="...">
+      <div class="carousel-caption d-none d-md-block">
+        <h5>WELCOME TO H M S</h5>
+        <p>Praesent commodo cursus magna, vel scelerisque nisl consectetur.</p>
+      </div>
+    </div>
+  </div>
+  <a class="carousel-control-prev" href="#carouselExampleCaptions" role="button" data-slide="prev">
+    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+    <span class="sr-only">Previous</span>
+  </a>
+  <a class="carousel-control-next" href="#carouselExampleCaptions" role="button" data-slide="next">
+    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+    <span class="sr-only">Next</span>
+  </a>
+</div>
+
+{% endblock body %}
+{% extends 'base.html' %}
+
+{% block title %}
+Login
+{% endblock title %}
+
+{% block body %}
+<div class="container mt-3">
+
+<div class="row">
+
+
+<div class="col-md-4">
+
+</div>
+
+<div class="col-md-4 jumbotron">
+
+<h4 class="text-center bg-light text-dark">Login</h4>
+<br>
+
+{% with messages=get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+
+<div class="alert alert-{{category}} alert-dismissible fade show" role="alert">
+    {{message}}
+
+  <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+
+
+  {% endfor %}
+  {% endif %}
+  {% endwith %}
+
+
+<form action="/login" method="post">
+
+ 
+
+  <div class="form-group">
+    <label for="email">Email Address</label>
+    <input type="email" class="form-control" id="email" name="email" required>
+  
+  </div>
+
+
+  <div class="form-group">
+    <label for="password">Password</label>
+    <input type="password" class="form-control" id="password" name="password" required>
+  </div>
+  
+  <button type="submit" class="btn btn-dark btn-sm btn-block">Login</button>
+</form>
+
+<br>
+Not a User <a href="/signup">Signup</a>
+
+
+</div>
+
+<div class="col-md-4">
+
+</div>
+
+
+</div>
+
+</div>
+
+
+{% endblock body %}
+{% extends 'base.html' %}
+
+{% block title %}
+Patients Booking
+{% endblock title %}
+
+{% block body %}
+
+<div class="container mt-3">
+<div class="row">
+
+<div class="col-md-5">
+<div class="card" style="width: 18rem;">
+  <img src="static/images/doc.jpg" class="card-img-top" alt="...">
+  <div class="card-body">
+    <h5 class="card-title">HOSPITAL DOCTORS</h6>
+    <p class="card-text">Doctors Names</p>
+  </div>
+  <ul class="list-group list-group-flush">
+    <li class="list-group-item">Cras justo odio</li>
+    <li class="list-group-item">Dapibus ac facilisis in</li>
+    <li class="list-group-item">Vestibulum at eros</li>
+  </ul>
+  <div class="card-body">
+    <a href="#" class="card-link">Contact Us</a>
+    <a href="#" class="card-link">About US</a>
+  </div>
+</div>
+
+</div>
+
+<div class="col-md-5">
+
+<h4 class="text-center bg-dark text-white">Book Your Slot</h4>
+<br>
+
+
+{% with messages=get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+
+<div class="alert alert-{{category}} alert-dismissible fade show" role="alert">
+    {{message}}
+
+  <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+
+
+  {% endfor %}
+  {% endif %}
+  {% endwith %}
+
+
+
+<form action="/patients" method="post" class="jumbotron">
+
+ 
+
+  <div class="form-group">
+
+    <input type="email" class="form-control" id="email" value={{current_user.email}} name="email" required>
+  
+  </div>
+
+  <div class="form-group">
+  
+    <input type="text" class="form-control" id="name" name="name" placeholder="Full Name" required>
+  
+  </div>
+
+ <div class="form-group">
+
+            
+                                      
+<select class="form-control" id="gender" name="gender"  required>
+        <option selected>Gender</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+        <option value="Others">Others</option>
+ 
+      </select>
+ </div>
+
+ <div class="form-group">
+
+            
+                                      
+<select class="form-control" id="slot" name="slot"  required>
+        <option selected>Slot</option>
+        <option value="morning">Morning</option>
+        <option value="evening">Evening</option>
+        <option value="night">Night</option>
+ 
+      </select>
+ </div>
+
+  <div class="form-group">
+    
+    <input type="time" class="form-control" name="time" placeholder="Time" required>
+  
+  </div>
+  <div class="form-group">
+    
+    <input type="date" class="form-control" name="date" placeholder="date" required>
+  
+  </div>
+  <div class="form-group">
+    
+    <input type="text" class="form-control" id="disease" name="disease" placeholder="Disease" required>
+  
+  </div>
+
+<div class="form-group">
+
+            
+                                      
+<select class="form-control" id="dept" name="dept"  required>
+        <option selected>Select Doctor Department</option>
+        {% for d in doct  %}
+        <option value="{{d.dept}}">{{d.dept}}</option>
+        {% endfor %}
+      </select>
+ </div>
+
+  <div class="form-group">
+
+    <input type="number" class="form-control" id="number" name="number" placeholder="Phone Number" required>
+  
+  </div>
+
+  
+  <button type="submit" id="btn" class="btn btn-dark btn-sm btn-block">Book</button>
+</form>
+
+</div>
+
+
+</div>
+
+
+
+</div>
+
+
+
+
+{% endblock body %}
+{% extends 'base.html' %}
+
+{% block title %}
+Signup
+{% endblock title %}
+
+{% block body %}
+<div class="container mt-3">
+
+<div class="row">
+
+
+<div class="col-md-4">
+
+</div>
+
+<div class="col-md-4 jumbotron">
+<h4 class="text-center bg-light text-dark">Sign Up Here</h4>
+<br>
+
+
+{% with messages=get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+
+<div class="alert alert-{{category}} alert-dismissible fade show" role="alert">
+    {{message}}
+
+  <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+
+
+  {% endfor %}
+  {% endif %}
+  {% endwith %}
+
+
+<form action="/signup" method="POST">
+
+  <div class="form-group">
+    <label for="username">UserName</label>
+    <input type="text" class="form-control" id="username" name="username" required >
+  </div>
+
+  
+ <div class="form-group">
+
+  <label for="usertype">Select UserType</label>          
+                                      
+<select class="form-control" id="usertype" name="usertype"  required>
+        <option selected>Select</option>
+        <option value="Patient">Patient</option>
+        <option value="Doctor">Doctor</option>
+      </select>
+ </div>
+
+  <div class="form-group">
+    <label for="email">Email Address</label>
+    <input type="email" class="form-control" id="email" name="email" required>
+    <small id="emailHelp" class="form-text text-muted">We'll never share your email with anyone else.</small>
+  </div>
+
+
+  <div class="form-group">
+    <label for="password">Password</label>
+    <input type="password" class="form-control" id="password" name="password" required>
+  </div>
+  
+  <button type="submit" class="btn btn-dark btn-sm btn-block">Signup</button>
+</form>
+<br>
+Already a User <a href="/login">Login</a>
+
+</div>
+
+<div class="col-md-4">
+
+</div>
+
+
+</div>
+
+</div>
+
+
+
+{% endblock body %}
+{% extends 'base.html' %}
+
+{% block title %}
+Trigers
+{% endblock title %}
+
+{% block body %}
+{% with messages=get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+
+<div class="alert alert-{{category}} alert-dismissible fade show" role="alert">
+    {{message}}
+
+  <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+
+
+  {% endfor %}
+  {% endif %}
+  {% endwith %}
+
+  <div class="container mt-4">
+<table class="table">
+  <thead class="thead-light">
+    <tr>
+      <th scope="col">TID</th>
+      <th scope="col">PID</th>
+      <th scope="col">EMAIL</th>
+      <th scope="col">NAME</th>
+      <th scope="col">ACTION</th>
+      <th scope="col">TIMESTAMP</th>
+ 
+    </tr>
+  </thead>
+  <tbody>
+  {% for post in posts %}
+    <tr>
+      <th scope="row">{{post.tid}}</th>
+      <td>{{post.pid}}</td>
+      <td>{{post.email}}</td>
+      <td>{{post.name}}</td>
+      <td>{{post.action}}</td>
+      <td>{{post.timestamp}}</td>
+
+    </tr>
+{% endfor %}
+  
+  </tbody>
+</table>
+</div>
+
+{% endblock body %}
+==================================================================================================================================================================
+                                         *************************** CSS CODE *************************
+.section-title {
+    text-align: center;
+    /* padding-bottom: 30px; */
+}
+
+.pricing .row {
+    padding-top: 0px;
+}
+
+.card {
+    margin-top: 57px;
+    border-radius: 8px 40px 40px 8px;
+    transition: all 0.5s ease-in-out;
+    box-shadow: 1px 0px 8px 2px greenyellow;
+}
+
+.bg-dark {
+    background-color: #63d471;
+    background-image: linear-gradient(315deg, #63d471 0%, #233329 74%);
+}
+
+label {
+    color: white;
+    margin-top: 15px;
+    font-family: 'Itim', cursive;
+}
+
+.jumbotron {
+    background-color: #63d471;
+    background-image: linear-gradient(315deg, #63d471 0%, #233329 74%);
+}
+
+#gender {
+    width: 300px;
+}
+
+#slot {
+    width: 300px;
+}
+
+#dept {
+    width: 300px;
+}
+
+.form-group input {
+    width: 300px;
+    border: none;
+    /* border-bottom: 1px solid purple; */
+    border-bottom: 2px solid green;
+    outline: none;
+    font-size: 22px;
+    margin-bottom: 5px;
+    font-family: 'Itim', cursive;
+}
+
+option {
+    width: 400px;
+    border: none;
+    border-bottom: 2px solid green;
+    outline: none;
+    font-size: 22px;
+    margin-bottom: 5px;
+}
+
+.form-group input:hover {
+    background-color: ghostwhite;
+}
+
+#btn {
+    background-color: #63d471;
+    background-image: linear-gradient(315deg, #63d471 0%, #233329 74%);
+    border-radius: 15px;
+    border: none;
+    position: relative;
+    width: 300px;
+}
+
+#btn:hover {
+    background-color: white;
+    color: white;
+}
+
+
