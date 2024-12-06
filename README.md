@@ -24,8 +24,7 @@
   After the successful compilation of the ppython file our webpage will be visible as
   ![image](https://github.com/user-attachments/assets/6b45bc91-d07d-412b-b305-88aa4d4c16e3)
 
-  There are many istances of the website which are given below......
-  ![image](https://github.com/user-attachments/assets/038cfa91-b956-442f-aaae-c8e4f3c290fa)
+  There are many instances of the website which are given in the results tab
 
 
 
