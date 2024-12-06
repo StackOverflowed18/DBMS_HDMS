@@ -16,6 +16,7 @@
   
   
   After writing our SQL Query in the Code block , and press implement. If the query if correct then the following page will appear.
+  ![Screenshot 2024-11-19 145302](https://github.com/user-attachments/assets/fedaa739-2c79-4176-a798-39dd929c2a11)
 
   
   After implementing a successful database you have to link this database to the flask which we have implemented using python
