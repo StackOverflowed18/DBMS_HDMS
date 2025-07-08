@@ -33,7 +33,7 @@
 
 
 
-## CONTRIBUTION
+## CONTRIBUTIONS made by 
 [@brobrocoder48](https://github.com/brobrocoder48) and
 [@Stackoverflowed18](https://github.com/stackoverflowed18)
 ## CONTACT US
